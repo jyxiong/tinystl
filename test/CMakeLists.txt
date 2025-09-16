@@ -1,10 +1,14 @@
-function(add_test_case TEST_CASE)
-    set(TEST_TARGET test_${TEST_CASE})
+function(add_test_case TEST_FILE CASE_NAME)
+    set(TEST_TARGET test_${CASE_NAME})
 
-    add_executable(${TEST_TARGET} ${TEST_CASE}.cpp)
+    add_executable(${TEST_TARGET} ${TEST_FILE})
     target_link_libraries(${TEST_TARGET} PRIVATE Catch2WithMain tinystl)
 
-	add_test(NAME test_${TEST_CASE} COMMAND ${TEST_TARGET})
+	add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
 endfunction()
 
-add_test_case(array)
+file(GLOB_RECURSE TEST_SOURCES *.cpp)
+foreach(TEST_FILE ${TEST_SOURCES})
+    get_filename_component(CASE_NAME ${TEST_FILE} NAME_WE)
+    add_test_case(${TEST_FILE} ${CASE_NAME})
+endforeach()
