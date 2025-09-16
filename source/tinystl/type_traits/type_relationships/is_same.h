@@ -1,6 +1,6 @@
 #pragma once
 
-#include "tinystl/type_traits/interal_constant.h"
+#include "tinystl/type_traits/helper_classes/integral_constant.h"
 
 namespace tinystl {
 // https://en.cppreference.com/w/cpp/types/is_same.html
