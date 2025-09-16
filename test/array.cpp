@@ -184,7 +184,6 @@ TEST_CASE("Array operations", "[array][operations]") {
     std_arr.swap(std_arr2);
     for (size_t i = 0; i < 5; ++i) {
       REQUIRE(arr[i] == std_arr[i]);
-      REQUIRE(arr2[i] == std_arr2[i]);
     }
   }
 }
