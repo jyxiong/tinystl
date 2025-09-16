@@ -2,7 +2,7 @@
 
 #include <array>
 
-#include "tinystl/array.h"
+#include "tinystl/container/array.h"
 
 TEST_CASE("Array constructors", "[array][ctor]") {
   SECTION("aggregate initialization") {
