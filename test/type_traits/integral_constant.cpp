@@ -1,7 +1,6 @@
-#include "catch2/catch_test_macros.hpp"
+#include <catch2/catch_test_macros.hpp>
 
-#include "tinystl/type_traits/helper_classes/integral_constant.h"
-#include "tinystl/type_traits/type_relationships/is_same.h"
+#include <tinystl/type_traits.h>
 
 TEST_CASE("integral_constant checks", "[type_traits][integral_constant]") {
   SECTION("type and value checks") {
