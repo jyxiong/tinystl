@@ -12,4 +12,7 @@ struct is_integral : bool_constant <
   f(0);                   // Exclude enumeration types
   p + t; // Exclude everything not yet excluded but integral types
 }>{};
+
+template <class T> inline constexpr bool is_integral_v = is_integral<T>::value;
+
 } // namespace tinystl

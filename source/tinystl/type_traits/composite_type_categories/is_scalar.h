@@ -16,4 +16,7 @@ struct is_scalar
                                   is_pointer<T>::value ||
                                   is_member_pointer<T>::value ||
                                   is_null_pointer<T>::value> {};
+
+template <class T> inline constexpr bool is_scalar_v = is_scalar<T>::value;
+
 } // namespace tinystl
