@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tinystl/type_traits/is_same.h"
-#include "tinystl/type_traits/remove_cv.h"
+#include "tinystl/type_traits/type_relationships/is_same.h"
+#include "tinystl/type_traits/const_volatility_specifiers/remove_cv.h"
 
 namespace tinystl {
 
@@ -13,5 +13,4 @@ struct is_void : is_same<void, typename remove_cv<T>::type> {};
 template< class T >
 constexpr bool is_void_v = is_void<T>::value; // since C++17
 
-template <class...> using void_t = void;
 }

@@ -1,6 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 
-#include "tinystl/type_traits/is_same.h"
+#include "tinystl/type_traits/type_relationships/is_same.h"
 
 TEST_CASE("is_same basic checks", "[type_traits][is_same]") {
     SECTION("int and int32_t") {
