@@ -1,8 +1,8 @@
-#include "catch2/catch_test_macros.hpp"
+#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 
-#include "tinystl/container/array.h"
+#include <tinystl/container/array.h>
 
 TEST_CASE("Array constructors", "[array][ctor]") {
   SECTION("aggregate initialization") {
