@@ -1,7 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 
-#include "tinystl/type_traits/primary_type_categories/is_void.h"
-#include "tinystl/type_traits/miscellaneous_transformations/void_t.h"
+#include "tinystl/type_traits.h"
 
 void foo();
 
