@@ -7,12 +7,11 @@
 #include <stdexcept>
 
 #include "tinystl/iterator/reverse_iterator.h"
-
+#include "tinystl/type_traits/const_volatility_specifiers/remove_cv.h"
 
 namespace tinystl {
-template <class T, std::size_t N> class array {
+template <class T, std::size_t N> struct array {
   // Member types
-public:
   using value_type = T;
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
@@ -25,14 +24,10 @@ public:
   using reverse_iterator = tinystl::reverse_iterator<iterator>;
   using const_reverse_iterator = tinystl::reverse_iterator<const_iterator>;
 
-  // IMPORTANT: The underlying array must be public to allow aggregate
-  // initialization
-  T m_data[N];
-
   // Member functions
-public:
+
   // Implicitly-declared member functions:
-  //   constructors
+  //   constructor
   //   destructor
   //   operator=
 
@@ -66,7 +61,7 @@ public:
   // Iterators
   iterator begin() noexcept { return m_data; }
   const_iterator begin() const noexcept { return m_data; }
-  const_iterator cbeing() const noexcept { return m_data; }
+  const_iterator cbegin() const noexcept { return m_data; }
 
   iterator end() noexcept { return m_data + N; }
   const_iterator end() const noexcept { return m_data + N; }
@@ -105,6 +100,10 @@ public:
       std::swap(m_data[i], other.m_data[i]);
     }
   }
+
+  // IMPORTANT: The underlying array must be public to allow aggregate
+  // initialization
+  T m_data[N];
 };
 
 // Non-member functions
@@ -120,4 +119,24 @@ constexpr auto operator<=>(const array<T, N> &lhs, const array<T, N> &rhs) {
                                                 std::compare_three_way{});
 }
 
+template <class T, std::size_t N>
+constexpr void swap(array<T, N> &x,
+                    array<T, N> &y) noexcept(noexcept(x.swap(y)));
+
+template <class T, std::size_t N>
+constexpr array<remove_cv_t<T>, N> to_array(T (&a)[N]);
+template <class T, std::size_t N>
+constexpr array<remove_cv_t<T>, N> to_array(T (&&a)[N]);
+
+template <std::size_t I, class T, std::size_t N>
+constexpr T &get(std::array<T, N> &a) noexcept;
+
+template <std::size_t I, class T, std::size_t N>
+constexpr T &&get(std::array<T, N> &&a) noexcept;
+
+template <std::size_t I, class T, std::size_t N>
+constexpr const T &get(const std::array<T, N> &a) noexcept;
+
+template <std::size_t I, class T, std::size_t N>
+constexpr const T &&get(const std::array<T, N> &&a) noexcept;
 } // namespace tinystl
