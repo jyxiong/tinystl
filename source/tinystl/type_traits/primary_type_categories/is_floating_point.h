@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdfloat>
-
 #include "tinystl/type_traits/const_volatility_specifiers/remove_cv.h"
 #include "tinystl/type_traits/helper_classes/integral_constant.h"
 #include "tinystl/type_traits/type_relationships/is_same.h"

@@ -28,5 +28,8 @@
 #include <tinystl/type_traits/primary_type_categories/is_union.h>
 #include <tinystl/type_traits/primary_type_categories/is_void.h>
 
+// type_properties
+#include <tinystl/type_traits/type_properties/is_empty.h>
+
 // type_relationships
 #include <tinystl/type_traits/type_relationships/is_same.h>
