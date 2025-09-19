@@ -7,7 +7,8 @@
 namespace tinystl {
 
 // https://en.cppreference.com/w/cpp/iterator/front_insert_iterator.html
-template <typename Container> class front_insert_iterator {
+template <typename Container>
+class front_insert_iterator {
 public:
   // Member types
   using iterator_category = output_iterator_tag;
@@ -19,8 +20,8 @@ public:
   // Member functions
   explicit front_insert_iterator(Container &c) : container(&c) {}
 
-  front_insert_iterator &
-  operator=(const typename Container::value_type &value) {
+  front_insert_iterator &operator=(const typename Container::value_type &value
+  ) {
     container->push_front(value);
     return *this;
   }

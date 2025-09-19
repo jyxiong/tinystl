@@ -6,7 +6,8 @@
 
 namespace tinystl {
 // https://en.cppreference.com/w/cpp/iterator/insert_iterator.html
-template <typename Container> class insert_iterator {
+template <typename Container>
+class insert_iterator {
 public:
   // Member types
   using iterator_category = output_iterator_tag;
@@ -17,7 +18,7 @@ public:
 
   // Member functions
   insert_iterator(Container &c, typename Container::iterator it)
-      : container(&c), iter(it) {}
+    : container(&c), iter(it) {}
 
   insert_iterator &operator=(const typename Container::value_type &value) {
     iter = container->insert(iter, value);
@@ -42,8 +43,9 @@ protected:
   typename Container::iterator iter;
 };
 
-template <typename Container> 
-insert_iterator<Container> inserter(Container &c, typename Container::iterator it) {
+template <typename Container>
+insert_iterator<Container>
+inserter(Container &c, typename Container::iterator it) {
   return insert_iterator<Container>(c, it);
 }
 

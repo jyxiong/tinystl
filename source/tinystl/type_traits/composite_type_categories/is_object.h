@@ -9,10 +9,11 @@
 namespace tinystl {
 // https://en.cppreference.com/w/cpp/types/is_object.html
 template <class T>
-struct is_object
-    : integral_constant<bool, is_scalar<T>::value || is_array<T>::value ||
-                                  is_union<T>::value || is_class<T>::value> {};
+struct is_object : integral_constant<
+                     bool, is_scalar<T>::value || is_array<T>::value ||
+                             is_union<T>::value || is_class<T>::value> {};
 
-template <class T> inline constexpr bool is_object_v = is_object<T>::value;
+template <class T>
+inline constexpr bool is_object_v = is_object<T>::value;
 
 } // namespace tinystl

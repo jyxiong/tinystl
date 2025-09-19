@@ -6,15 +6,16 @@
 
 namespace tinystl {
 
-template<class T>
+template <class T>
 struct is_array : false_type {};
- 
-template<class T>
+
+template <class T>
 struct is_array<T[]> : true_type {};
- 
-template<class T, std::size_t N>
+
+template <class T, std::size_t N>
 struct is_array<T[N]> : true_type {};
 
-template <class T> inline constexpr bool is_array_v = is_array<T>::value;
+template <class T>
+inline constexpr bool is_array_v = is_array<T>::value;
 
-}
+} // namespace tinystl

@@ -109,7 +109,7 @@ TEST_CASE("Array iterators", "[array][iterator]") {
   }
 
   SECTION("const begin and end") {
-    const auto& carr = arr;
+    const auto &carr = arr;
     auto it = carr.begin();
     auto std_it = std_arr.begin();
     for (size_t i = 0; i < 5; ++i, ++it, ++std_it) {
@@ -129,7 +129,7 @@ TEST_CASE("Array iterators", "[array][iterator]") {
   }
 
   SECTION("const rbegin and rend") {
-    const auto& carr = arr;
+    const auto &carr = arr;
     auto rit = carr.rbegin();
     auto std_rit = std_arr.rbegin();
     for (size_t i = 0; i < 5; ++i, ++rit, ++std_rit) {
@@ -138,7 +138,6 @@ TEST_CASE("Array iterators", "[array][iterator]") {
     REQUIRE(rit == carr.rend());
   }
 }
-
 
 TEST_CASE("Array capacity", "[array][capacity]") {
   tinystl::array<int, 5> arr = {1, 2, 3, 4, 5};
