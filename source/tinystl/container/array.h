@@ -8,9 +8,9 @@
 
 #include "tinystl/iterator/reverse_iterator.h"
 
-
 namespace tinystl {
-template <class T, std::size_t N> class array {
+template <class T, std::size_t N>
+class array {
   // Member types
 public:
   using value_type = T;
@@ -115,9 +115,10 @@ constexpr bool operator==(const array<T, N> &lhs, const array<T, N> &rhs) {
 
 template <class T, std::size_t N>
 constexpr auto operator<=>(const array<T, N> &lhs, const array<T, N> &rhs) {
-  return std::lexicographical_compare_three_way(lhs.data(), lhs.data() + N,
-                                                rhs.data(), rhs.data() + N,
-                                                std::compare_three_way{});
+  return std::lexicographical_compare_three_way(
+    lhs.data(), lhs.data() + N, rhs.data(), rhs.data() + N,
+    std::compare_three_way{}
+  );
 }
 
 } // namespace tinystl

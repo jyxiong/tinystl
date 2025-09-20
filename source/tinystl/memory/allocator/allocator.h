@@ -8,7 +8,8 @@
 
 namespace tinystl {
 // https://en.cppreference.com/w/cpp/memory/allocator.html
-template <class T> struct allocator {
+template <class T>
+struct allocator {
   // Member types
   using value_type = T;
   using pointer = T *;               // util c++20
@@ -18,7 +19,8 @@ template <class T> struct allocator {
   using size_type = std::size_t;
   using difference_type = std::ptrdiff_t;
   using propagate_on_container_move_assignment = true_type;
-  template <class U> struct rebind {
+  template <class U>
+  struct rebind {
     typedef allocator<U> other;
   }; // util c++20
   using is_always_equal = true_type; // util c++26
@@ -28,7 +30,8 @@ template <class T> struct allocator {
 
   allocator(const allocator &other) noexcept {}
 
-  template <class U> allocator(const allocator<U> &) noexcept {}
+  template <class U>
+  allocator(const allocator<U> &) noexcept {}
 
   ~allocator() noexcept {}
 
@@ -38,9 +41,7 @@ template <class T> struct allocator {
     return &x;
   } // util c++20
 
-  T *allocate(size_type n, const void *) {
-    allocate(n);
-  } // util c++20
+  T *allocate(size_type n, const void *) { allocate(n); } // util c++20
 
   T *allocate(size_type n) {
     if (std::numeric_limits<std::size_t>::max() / sizeof(T) < n)
@@ -56,15 +57,13 @@ template <class T> struct allocator {
     return std::numeric_limits<std::size_t>::max() / sizeof(T);
   } // util c++20
 
-  template< class U, class... Args >
-  void construct( U* p, Args&&... args )
-  {
-    ::new((void*)p) U(std::forward<Args>(args)...);
+  template <class U, class... Args>
+  void construct(U *p, Args &&...args) {
+    ::new ((void *)p) U(std::forward<Args>(args)...);
   } // util c++20
 
-  template< class U >
-  void destroy( U* p )
-  {
+  template <class U>
+  void destroy(U *p) {
     p->~U();
   } // util c++20
 };

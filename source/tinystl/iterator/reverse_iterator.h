@@ -7,7 +7,8 @@
 namespace tinystl {
 
 // https://en.cppreference.com/w/cpp/iterator/reverse_iterator.html
-template <typename Iter> class reverse_iterator {
+template <typename Iter>
+class reverse_iterator {
 public:
   // Member types
   using iterator_type = Iter;
@@ -89,60 +90,67 @@ protected:
 
 // Non-member functions
 template <typename Iter1, typename Iter2>
-bool operator==(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs) {
+bool operator==(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return lhs.base() == rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-bool operator!=(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs) {
+bool operator!=(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return lhs.base() != rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-bool operator<(const reverse_iterator<Iter1> &lhs,
-               const reverse_iterator<Iter2> &rhs) {
+bool operator<(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return lhs.base() > rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-bool operator<=(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs) {
+bool operator<=(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return lhs.base() >= rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-bool operator>(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs) {
-    return lhs.base() < rhs.base();
+bool operator>(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
+  return lhs.base() < rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-bool operator>=(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs) {
+bool operator>=(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return lhs.base() <= rhs.base();
 }
 
 template <typename Iter1, typename Iter2>
-constexpr std::compare_three_way_result_t<Iter1, Iter2>
-operator<=>(const reverse_iterator<Iter1> &lhs,
-            const reverse_iterator<Iter2> &rhs) {
+constexpr std::compare_three_way_result_t<Iter1, Iter2> operator<=>(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) {
   return rhs.base() <=> lhs.base();
 }
 
 template <typename Iter>
 reverse_iterator<Iter> operator+(
-    typename reverse_iterator<Iter>::difference_type n,
-    const reverse_iterator<Iter> &it) {
+  typename reverse_iterator<Iter>::difference_type n,
+  const reverse_iterator<Iter> &it
+) {
   return it + n;
 }
 
 template <typename Iter1, typename Iter2>
-auto operator-(const reverse_iterator<Iter1> &lhs,
-                const reverse_iterator<Iter2> &rhs)
-      -> decltype(rhs.base() - lhs.base()) {
-    return rhs.base() - lhs.base();
+auto operator-(
+  const reverse_iterator<Iter1> &lhs, const reverse_iterator<Iter2> &rhs
+) -> decltype(rhs.base() - lhs.base()) {
+  return rhs.base() - lhs.base();
 }
 
 // https://en.cppreference.com/w/cpp/iterator/make_reverse_iterator.html
@@ -150,6 +158,5 @@ template <typename Iter>
 reverse_iterator<Iter> make_reverse_iterator(Iter i) {
   return reverse_iterator<Iter>(i);
 }
-
 
 } // namespace tinystl

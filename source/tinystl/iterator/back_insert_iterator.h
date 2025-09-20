@@ -6,9 +6,9 @@
 
 namespace tinystl {
 
-  
 // https://en.cppreference.com/w/cpp/iterator/back_insert_iterator.html
-template <typename Container> class back_insert_iterator {
+template <typename Container>
+class back_insert_iterator {
 public:
   // Member types
   using iterator_category = output_iterator_tag;
