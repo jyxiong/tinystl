@@ -85,7 +85,7 @@ public:
 
   // TODO
 protected:
-  Iter current = It();
+  Iter current = Iter();
 };
 
 // Non-member functions
