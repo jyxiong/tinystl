@@ -7,7 +7,7 @@
 namespace tinystl {
 
 // https://en.cppreference.com/w/cpp/iterator/back_insert_iterator.html
-template <typename Container>
+template <class Container>
 class back_insert_iterator {
 public:
   // Member types
@@ -42,7 +42,7 @@ protected:
 };
 
 // https://en.cppreference.com/w/cpp/iterator/back_inserter.html
-template <typename Container>
+template <class Container>
 back_insert_iterator<Container> back_inserter(Container &c) {
   return back_insert_iterator<Container>(c);
 }

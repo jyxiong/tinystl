@@ -6,7 +6,7 @@
 
 namespace tinystl {
 // https://en.cppreference.com/w/cpp/iterator/insert_iterator.html
-template <typename Container>
+template <class Container>
 class insert_iterator {
 public:
   // Member types
@@ -43,7 +43,7 @@ protected:
   typename Container::iterator iter;
 };
 
-template <typename Container>
+template <class Container>
 insert_iterator<Container>
 inserter(Container &c, typename Container::iterator it) {
   return insert_iterator<Container>(c, it);
