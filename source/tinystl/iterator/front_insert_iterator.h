@@ -20,8 +20,8 @@ public:
   // Member functions
   explicit front_insert_iterator(Container &c) : container(&c) {}
 
-  front_insert_iterator &operator=(const typename Container::value_type &value
-  ) {
+  front_insert_iterator &
+  operator=(const typename Container::value_type &value) {
     container->push_front(value);
     return *this;
   }
