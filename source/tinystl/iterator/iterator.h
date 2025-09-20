@@ -33,7 +33,7 @@ struct iterator {
 };
 
 // iterator_traits template
-template <typename Iterator>
+template <class Iterator>
 struct iterator_traits {
   using iterator_category = typename Iterator::iterator_category;
   using value_type = typename Iterator::value_type;
@@ -43,7 +43,7 @@ struct iterator_traits {
 };
 
 // Specialization for raw pointers
-template <typename T>
+template <class T>
 struct iterator_traits<T *> {
   using iterator_category = random_access_iterator_tag;
   using value_type = T;
@@ -53,7 +53,7 @@ struct iterator_traits<T *> {
 };
 
 // Specialization for const raw pointers
-template <typename T>
+template <class T>
 struct iterator_traits<const T *> {
   using iterator_category = random_access_iterator_tag;
   using value_type = T;
