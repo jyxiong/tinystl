@@ -1,11 +1,21 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <memory>
 #include <string>
 
 #include <tinystl/memory.h>
 #include <tinystl/type_traits.h>
 
 TEST_CASE("tinystl::allocator basic int usage", "[allocator][int]") {
+
+  // construct
+  std::allocator<int> std_alloc;
+  int* std_p = std_alloc.allocate(1);
+  std::allocator_traits<std::allocator<int>>::construct(std_alloc, std_p, 7);
+  REQUIRE(*std_p == 7);
+  std::allocator_traits<std::allocator<int>>::destroy(std_alloc, std_p);
+  std_alloc.deallocate(std_p, 1);
+
   tinystl::allocator<int> alloc1;
   static_assert(tinystl::is_same_v<int, decltype(alloc1)::value_type>);
   int *p1 = alloc1.allocate(1);
