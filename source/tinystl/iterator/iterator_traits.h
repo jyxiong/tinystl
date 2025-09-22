@@ -5,8 +5,8 @@
 #include <iterator>
 
 #include "tinystl/iterator/iterator_tag.h"
-#include "tinystl/type_traits/composite_type_categories/is_object.h"
-#include "tinystl/type_traits/type_properties/is_renferenceable.h"
+#include "tinystl/type_traits/is_object.h"
+#include "tinystl/type_traits/is_renferenceable.h"
 
 // https://en.cppreference.com/w/cpp/iterator/iterator_tags.html
 // https://en.cppreference.com/w/cpp/iterator/iterator_traits.html
