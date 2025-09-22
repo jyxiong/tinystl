@@ -69,83 +69,83 @@ concept cpp17_random_access_iterator =
 
 // has nested types
 template <class Iter>
-concept has_iterator_category = requires { typename Iter::iterator_category; };
+concept iter_has_iterator_category = requires { typename Iter::iterator_category; };
 
 template <class Iter>
-concept has_value_type = requires { typename Iter::value_type; };
+concept iter_has_value_type = requires { typename Iter::value_type; };
 
 template <class Iter>
-concept has_difference_type = requires { typename Iter::difference_type; };
+concept iter_has_difference_type = requires { typename Iter::difference_type; };
 
 template <class Iter>
-concept has_pointer = requires { typename Iter::pointer; };
+concept iter_has_pointer = requires { typename Iter::pointer; };
 
 template <class Iter>
-concept has_reference = requires { typename Iter::reference; };
+concept iter_has_reference = requires { typename Iter::reference; };
 
 // get pointer type
 template <class Iter>
-concept has_arrow =
+concept iter_has_arrow =
   requires(Iter &&iter) { static_cast<Iter &&>(iter).operator->(); };
 
 template <class Iter>
-struct get_pointer {
+struct iter_get_pointer {
   using type = void;
 };
 
-template <has_pointer Iter>
-struct get_pointer<Iter> {
+template <iter_has_pointer Iter>
+struct iter_get_pointer<Iter> {
   using type = typename Iter::pointer;
 };
 
 template <class Iter>
-  requires(!has_pointer<Iter>) && (has_arrow<Iter>)
-struct get_pointer<Iter> {
+  requires(!iter_has_pointer<Iter>) && (iter_has_arrow<Iter>)
+struct iter_get_pointer<Iter> {
   using type = decltype(std::declval<Iter &>().operator->());
 };
 
 // get reference type
 template <class Iter>
-struct get_reference {
+struct iter_get_reference {
   using type = std::remove_reference_t<Iter>;
 };
 
-template <has_reference Iter>
-struct get_reference<Iter> {
+template <iter_has_reference Iter>
+struct iter_get_reference<Iter> {
   using type = typename Iter::reference;
 };
 
 // get iterator category
 template <class Iter>
-struct get_iterator_category_impl {
+struct iter_get_iterator_category_impl {
   using type = tinystl::input_iterator_tag;
 };
 
 template <cpp17_forward_iterator Iter>
-struct get_iterator_category_impl<Iter> {
+struct iter_get_iterator_category_impl<Iter> {
   using type = tinystl::forward_iterator_tag;
 };
 
 template <cpp17_bidirectional_iterator Iter>
-struct get_iterator_category_impl<Iter> {
+struct iter_get_iterator_category_impl<Iter> {
   using type = tinystl::bidirectional_iterator_tag;
 };
 
 template <cpp17_random_access_iterator Iter>
-struct get_iterator_category_impl<Iter> {
+struct iter_get_iterator_category_impl<Iter> {
   using type = tinystl::random_access_iterator_tag;
 };
 
 template <class Iter>
-struct get_iterator_category : get_iterator_category_impl<Iter> {};
+struct iter_get_iterator_category : iter_get_iterator_category_impl<Iter> {};
 
-template <has_iterator_category Iter>
-struct get_iterator_category<Iter> {
+template <iter_has_iterator_category Iter>
+struct iter_get_iterator_category<Iter> {
   using type = Iter::iterator_category;
 };
 
 template <class Iter>
-struct get_difference_type {
+struct iter_get_difference_type {
   using type = void;
 };
 
@@ -153,17 +153,17 @@ template <class Iter>
   requires requires {
     typename std::incrementable_traits<Iter>::difference_type;
   }
-struct get_difference_type<Iter> {
+struct iter_get_difference_type<Iter> {
   using type = typename std::incrementable_traits<Iter>::difference_type;
 };
 
 template <class Iter>
 concept specifies_members = requires {
-  requires has_value_type<Iter>;
-  requires has_difference_type<Iter>;
-  requires has_reference<Iter>;
-  requires has_iterator_category<Iter>;
-  requires !has_pointer<Iter>;
+  requires iter_has_value_type<Iter>;
+  requires iter_has_difference_type<Iter>;
+  requires iter_has_reference<Iter>;
+  requires iter_has_iterator_category<Iter>;
+  requires !iter_has_pointer<Iter>;
 };
 
 template <class _Tp>
@@ -192,19 +192,19 @@ struct iterator_traits<Iter> {
 
 template <detail::cpp17_input_iterator_missing_members Iter>
 struct iterator_traits<Iter> {
-  using iterator_category = typename detail::get_iterator_category<Iter>::type;
+  using iterator_category = typename detail::iter_get_iterator_category<Iter>::type;
   using value_type = typename std::indirectly_readable_traits<Iter>::value_type;
   using difference_type =
     typename std::incrementable_traits<Iter>::difference_type;
-  using pointer = typename detail::get_pointer<Iter>::type;
-  using reference = typename detail::get_reference<Iter>::type;
+  using pointer = typename detail::iter_get_pointer<Iter>::type;
+  using reference = typename detail::iter_get_reference<Iter>::type;
 };
 
 template <detail::cpp17_iterator_missing_members Iter>
 struct iterator_traits<Iter> {
   using iterator_category = output_iterator_tag;
   using value_type = void;
-  using difference_type = detail::get_difference_type<Iter>::type;
+  using difference_type = detail::iter_get_difference_type<Iter>::type;
   using pointer = void;
   using reference = void;
 };
