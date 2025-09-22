@@ -1,13 +1,17 @@
 #pragma once
 
-#include <utility>
 #include <limits>
+#include <utility>
 
+
+#include "tinystl/memory/construct.h"
+#include "tinystl/memory/destroy.h"
 #include "tinystl/memory/pointer_traits.h"
-#include "tinystl/type_traits/void_t.h"
-#include "tinystl/type_traits/is_empty.h"
 #include "tinystl/type_traits/enable_if.h"
+#include "tinystl/type_traits/is_empty.h"
 #include "tinystl/type_traits/make_unsigned.h"
+#include "tinystl/type_traits/void_t.h"
+
 
 // https://en.cppreference.com/w/cpp/memory/allocator_traits.html
 
@@ -44,8 +48,7 @@ struct get_void_pointer {
     typename tinystl::pointer_traits<pointer_type>::template rebind<void>;
 };
 template <class Alloc>
-struct get_void_pointer<
-  Alloc, tinystl::void_t<typename Alloc::void_pointer>> {
+struct get_void_pointer<Alloc, tinystl::void_t<typename Alloc::void_pointer>> {
   using type = typename Alloc::void_pointer;
 };
 
@@ -66,24 +69,26 @@ struct get_const_void_pointer<
 // get_difference_type
 template <class Alloc, class = void>
 struct get_difference_type {
-    using _Ptrty = typename get_pointer<Alloc>::type;
-    using type   = typename tinystl::pointer_traits<_Ptrty>::difference_type;
+  using _Ptrty = typename get_pointer<Alloc>::type;
+  using type = typename tinystl::pointer_traits<_Ptrty>::difference_type;
 };
 
 template <class Alloc>
-struct get_difference_type<Alloc, tinystl::void_t<typename Alloc::difference_type>> {
-    using type = typename Alloc::difference_type;
+struct get_difference_type<
+  Alloc, tinystl::void_t<typename Alloc::difference_type>> {
+  using type = typename Alloc::difference_type;
 };
 
 // get_size_type
 template <class Alloc, class = void>
 struct get_size_type {
-    using type = tinystl::make_unsigned_t<typename get_difference_type<Alloc>::type>;
+  using type =
+    tinystl::make_unsigned_t<typename get_difference_type<Alloc>::type>;
 };
 
 template <class Alloc>
 struct get_size_type<Alloc, tinystl::void_t<typename Alloc::size_type>> {
-    using type = typename Alloc::size_type;
+  using type = typename Alloc::size_type;
 };
 
 // propagate_on_container_copy_assignment
@@ -144,7 +149,7 @@ template <
   template <class, class...> class Alloc, class First, class... Rest,
   class Newfirst>
 struct get_rebind_get_impl<Alloc<First, Rest...>, Newfirst> {
-// given Alloc<First, Rest...>, replace First with Newfirst
+  // given Alloc<First, Rest...>, replace First with Newfirst
   using type = Alloc<Newfirst, Rest...>;
 };
 
@@ -165,9 +170,9 @@ template <class, class Alloc, class... Args>
 const bool has_construct_impl = false;
 
 template <class Alloc, class... Args>
-const bool
-    has_construct_impl<decltype((void)std::declval<Alloc>().construct(std::declval<Args>()...)), Alloc, Args...> =
-        true;
+const bool has_construct_impl<
+  decltype((void)std::declval<Alloc>().construct(std::declval<Args>()...)),
+  Alloc, Args...> = true;
 
 template <class Alloc, class... Args>
 const bool has_construct = has_construct_impl<void, Alloc, Args...>;
@@ -177,15 +182,19 @@ template <class Alloc, class Pointer, class = void>
 const bool has_destroy = false;
 
 template <class Alloc, class Pointer>
-const bool
-    has_destroy<Alloc, Pointer, decltype((void)std::declval<Alloc>().destroy(std::declval<Pointer>()))> = true;
+const bool has_destroy<
+  Alloc, Pointer,
+  decltype((void)std::declval<Alloc>().destroy(std::declval<Pointer>()))> =
+  true;
 
 // has_max_size
 template <class Alloc, class = void>
 const bool has_max_size = false;
 
 template <class Alloc>
-const bool has_max_size<Alloc, decltype((void)std::declval<Alloc&>().max_size())> = true;
+const bool
+  has_max_size<Alloc, decltype((void)std::declval<Alloc &>().max_size())> =
+    true;
 
 // has_select_on_container_copy_construction
 template <class Alloc, class = void>
@@ -193,8 +202,8 @@ const bool has_select_on_container_copy_construction = false;
 
 template <class Alloc>
 const bool has_select_on_container_copy_construction<
-    Alloc,
-    decltype((void)std::declval<Alloc>().select_on_container_copy_construction())> = true;
+  Alloc, decltype((void)std::declval<Alloc>()
+                    .select_on_container_copy_construction())> = true;
 
 } // namespace detail
 
@@ -253,7 +262,7 @@ struct allocator_traits {
     class T, class... Args,
     enable_if_t<!detail::has_construct<Alloc, T *, Args...>, int> = 0>
   static void construct(Alloc &, T *p, Args &&...args) {
-    std::construct_at(p, std::forward<Args>(args)...);
+    construct_at(p, std::forward<Args>(args)...);
   }
 
   template <class T, enable_if_t<detail::has_destroy<Alloc, T *>, int> = 0>
@@ -263,11 +272,13 @@ struct allocator_traits {
 
   template <class T, enable_if_t<!detail::has_destroy<Alloc, T *>, int> = 0>
   static void destroy(Alloc &, T *p) {
-    std::destroy_at(p);
+    destroy_at(p);
   }
 
   template <class U = Alloc, enable_if_t<detail::has_max_size<U>, int> = 0>
-  static size_type max_size(const Alloc &a) noexcept { return a.max_size(); }
+  static size_type max_size(const Alloc &a) noexcept {
+    return a.max_size();
+  }
 
   template <class U = Alloc, enable_if_t<!detail::has_max_size<U>, int> = 0>
   static size_type max_size(const Alloc &) noexcept {
