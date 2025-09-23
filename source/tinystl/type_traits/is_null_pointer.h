@@ -7,7 +7,7 @@
 
 namespace tinystl {
 template <class T>
-struct is_null_pointer : is_same<std::nullptr_t, typename remove_cv<T>::type> {
+struct is_null_pointer : is_same<std::nullptr_t, remove_cv_t<T>> {
 };
 
 template <class T>

@@ -7,8 +7,7 @@
 namespace tinystl {
 template <class T>
 struct is_arithmetic
-  : integral_constant<
-      bool, is_integral<T>::value || is_floating_point<T>::value> {};
+  : bool_constant<is_integral_v<T> || is_floating_point_v<T>> {};
 
 template <class T>
 inline constexpr bool is_arithmetic_v = is_arithmetic<T>::value;

@@ -5,7 +5,7 @@
 
 namespace detail {
 template <class T>
-tinystl::integral_constant<bool, !tinystl::is_union<T>::value> test(int T::*);
+tinystl::bool_constant<!tinystl::is_union_v<T>> test(int T::*);
 
 template <class>
 tinystl::false_type test(...);
