@@ -8,6 +8,6 @@ template <class T>
 struct is_enum : tinystl::bool_constant<__is_enum(T)> {};
 
 template <class T>
-inline constexpr bool is_enum_v = is_enum<T>::value;
+inline constexpr bool is_enum_v = __is_enum(T);
 
 } // namespace tinystl
