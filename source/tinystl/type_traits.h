@@ -1,6 +1,9 @@
 #pragma once
 
 // https://en.cppreference.com/w/cpp/header/type_traits.html
+// https://gcc.gnu.org/onlinedocs/gcc/Type-Traits.html
+// https://clang.llvm.org/docs/LanguageExtensions.html#type-trait-primitives
+// https://learn.microsoft.com/en-us/cpp/extensions/compiler-support-for-type-traits-cpp-component-extensions?view=msvc-170
 
 // composite_type_categories
 #include <tinystl/type_traits/is_arithmetic.h>

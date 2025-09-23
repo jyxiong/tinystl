@@ -7,5 +7,5 @@ template <class T>
 struct is_empty : bool_constant<__is_empty(T)> {};
 
 template <class T>
-inline constexpr bool is_empty_v = is_empty<T>::value;
+inline constexpr bool is_empty_v = __is_empty(T);
 } // namespace tinystl
