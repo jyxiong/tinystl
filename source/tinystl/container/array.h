@@ -4,9 +4,8 @@
 
 #include <compare>
 #include <cstddef>
+#include <iterator>
 #include <stdexcept>
-
-#include "tinystl/iterator/reverse_iterator.h"
 
 namespace tinystl {
 template <class T, std::size_t N>
@@ -21,8 +20,8 @@ struct array {
   using const_pointer = const value_type *;
   using iterator = pointer;
   using const_iterator = const_pointer;
-  using reverse_iterator = tinystl::reverse_iterator<iterator>;
-  using const_reverse_iterator = tinystl::reverse_iterator<const_iterator>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   // Member functions
 
