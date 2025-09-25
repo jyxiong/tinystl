@@ -52,8 +52,13 @@ public:
   vector &operator=(std::initializer_list<value_type> init);
 
   void assign(std::size_t n, const T &val);
-  template <class InputIt>
-  void assign(InputIt first, InputIt last);
+  template <std::forward_iterator ForwardIter>
+    requires std::constructible_from<T, std::iter_reference_t<ForwardIter>>
+  void assign(ForwardIter first, ForwardIter last);
+  template <std::input_iterator InputIter>
+    requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+             (!std::forward_iterator<InputIter>)
+  void assign(InputIter first, InputIter last);
   void assign(std::initializer_list<T> ilist);
 
   allocator_type get_allocator() const;
@@ -118,12 +123,18 @@ public:
 private:
   void throw_length_error();
 
+  size_type recommend(size_type new_size);
+
   void allocate(std::size_t n);
 
+  void deallocate();
+
   void construct(std::size_t n);
-  void construct(std::size_t n, const T& val);
-  template <class InputIterator, class Sential>
-  void construct(InputIterator first, Sential last, std::size_t n);
+  void construct(std::size_t n, const T &val);
+  template <class InputIter, class Sentinel>
+  void construct(InputIter first, Sentinel last, std::size_t n);
+
+  void destruct(pointer new_last);
 
 private:
   Alloc m_alloc;
@@ -197,16 +208,14 @@ vector<T, Alloc>::vector(
 }
 
 template <class T, class Alloc>
-template <std::input_iterator InputIterator>
-  requires std::constructible_from<T, std::iter_reference_t<InputIterator>> &&
-           (!std::forward_iterator<InputIterator>) &&
+template <std::input_iterator InputIter>
+  requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+           (!std::forward_iterator<InputIter>) &&
            (std::movable<T> || std::copyable<T>)
-vector<T, Alloc>::vector(
-  InputIterator first, InputIterator last, const Alloc &alloc
-) {
-  static_assert(
-    true, "tinystl::vector does not support construction from input iterators."
-  );
+vector<T, Alloc>::vector(InputIter first, InputIter last, const Alloc &alloc) {
+  for (; first != last; ++first) {
+    this->emplace_back(*first);
+  }
 }
 
 template <class T, class Alloc>
@@ -269,12 +278,92 @@ vector<T, Alloc>::vector(vector &&other, const Alloc &alloc) : m_alloc(alloc) {
     std::size_t n = other.size();
     if (n > 0) {
       this->allocate(n);
-      this->construct(std::make_move_iterator(other.begin()), 
-                      std::make_move_iterator(other.end()), n);
+      this->construct(
+        std::make_move_iterator(other.begin()),
+        std::make_move_iterator(other.end()), n
+      );
     } else {
       m_begin = m_end = m_cap = nullptr;
     }
   }
+}
+
+template <class T, class Alloc>
+vector<T, Alloc>::~vector() {}
+
+template <class T, class Alloc>
+vector<T, Alloc> &vector<T, Alloc>::operator=(const vector &other) {}
+
+template <class T, class Alloc>
+vector<T, Alloc> &vector<T, Alloc>::operator=(vector &&other) {}
+
+template <class T, class Alloc>
+vector<T, Alloc> &
+vector<T, Alloc>::operator=(std::initializer_list<value_type> init) {}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::assign(std::size_t n, const T &val) {
+  if (n <= this->capacity()) {
+    size_type sz = this->size();
+    std::fill_n(m_begin, std::min(n, sz), val);
+    if (n > sz) {
+      this->construct(n - sz, val);
+    } else {
+      this->destruct(m_begin + n);
+    }
+  } else {
+    this->destruct(m_begin);
+    this->deallocate();
+    this->allocate(this->recommend(n));
+    this->construct(n, val);
+  }
+}
+
+template <class T, class Alloc>
+template <std::forward_iterator ForwardIter>
+  requires std::constructible_from<T, std::iter_reference_t<ForwardIter>>
+void vector<T, Alloc>::assign(ForwardIter first, ForwardIter last) {
+  size_type n = std::distance(first, last);
+  if (n <= this->capacity()) {
+    size_type sz = this->size();
+    if (n > sz) {
+      ForwardIter mid = std::next(first, sz);
+      std::copy(first, mid, m_begin);
+      this->construct(mid, last, n - sz);
+    } else {
+      pointer new_last = std::copy(first, last, m_begin);
+      this->destruct(new_last);
+    }
+  } else {
+    this->destruct(m_begin);
+    this->deallocate();
+    this->allocate(this->recommend(n));
+    this->construct(first, last, n);
+  }
+}
+
+template <class T, class Alloc>
+template <std::input_iterator InputIter>
+requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+         (!std::forward_iterator<InputIter>)
+void vector<T, Alloc>::assign(InputIter first, InputIter last) {
+  pointer cur = m_begin;
+  for (; cur != m_end && first != last; ++cur, ++first) {
+    *cur = *first;
+  }
+
+  if (cur != m_end) {
+    this->destruct(cur);
+  } else {
+    for (; first != last; ++first) {
+      this->emplace_back(*first);
+    }
+  }
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::assign(std::initializer_list<T> init) {
+  assign(init.begin(), init.end());
 }
 
 /* -------------------------------------------------------------------------- */
@@ -283,6 +372,22 @@ vector<T, Alloc>::vector(vector &&other, const Alloc &alloc) : m_alloc(alloc) {
 template <class T, class Alloc>
 void vector<T, Alloc>::throw_length_error() {
   throw std::length_error("vector");
+}
+
+template <class T, class Alloc>
+typename vector<T, Alloc>::size_type
+vector<T, Alloc>::recommend(size_type new_size) {
+  const size_type max_size = this->max_size();
+  if (new_size > max_size) {
+    this->throw_length_error();
+  }
+
+  const size_type cap = this->capacity();
+  if (cap >= max_size / 2) {
+    return max_size;
+  }
+
+  return std::max<size_type>(2 * cap, new_size);
 }
 
 template <class T, class Alloc>
@@ -296,6 +401,14 @@ void vector<T, Alloc>::allocate(std::size_t n) {
 }
 
 template <class T, class Alloc>
+void vector<T, Alloc>::deallocate() {
+  if (m_begin != nullptr) {
+    alloc_traits::deallocate(m_alloc, m_begin, capacity());
+    m_begin = m_end = m_cap = nullptr;
+  }
+}
+
+template <class T, class Alloc>
 void vector<T, Alloc>::construct(std::size_t n) {
   m_end = m_begin;
   for (std::size_t i = 0; i < n; ++i) {
@@ -305,7 +418,7 @@ void vector<T, Alloc>::construct(std::size_t n) {
 }
 
 template <class T, class Alloc>
-void vector<T, Alloc>::construct(std::size_t n, const T& val) {
+void vector<T, Alloc>::construct(std::size_t n, const T &val) {
   m_end = m_begin;
   for (std::size_t i = 0; i < n; ++i) {
     alloc_traits::construct(m_alloc, m_end, val);
@@ -314,15 +427,23 @@ void vector<T, Alloc>::construct(std::size_t n, const T& val) {
 }
 
 template <class T, class Alloc>
-template <class InputIterator, class Sential>
-void vector<T, Alloc>::construct(
-  InputIterator first, Sential last, std::size_t n
-) {
+template <class InputIter, class Sentinel>
+void vector<T, Alloc>::construct(InputIter first, Sentinel last, std::size_t n) {
+  // FIXME: check last and n
   m_end = m_begin;
   for (std::size_t i = 0; i < n; ++i) {
     alloc_traits::construct(m_alloc, m_end, *first);
     ++m_end;
     ++first;
   }
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::destruct(pointer new_last) {
+  pointer new_end = m_end;
+  while (new_last != new_end) {
+    alloc_traits::destroy(m_alloc, --new_end);
+  }
+  m_end = new_last;
 }
 } // namespace tinystl
