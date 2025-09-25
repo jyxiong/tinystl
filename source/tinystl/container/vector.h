@@ -138,9 +138,9 @@ private:
 
 private:
   Alloc m_alloc;
-  T *m_begin;
-  T *m_end;
-  T *m_cap;
+  T *m_begin = nullptr;
+  T *m_end = nullptr;
+  T *m_cap = nullptr;
 };
 
 template <class T, class Alloc>
@@ -175,8 +175,6 @@ vector<T, Alloc>::vector(std::size_t n, const Alloc &alloc) : m_alloc(alloc) {
   if (n > 0) {
     this->allocate(n);
     this->construct(n);
-  } else {
-    m_begin = m_end = m_cap = nullptr;
   }
 }
 
@@ -186,7 +184,9 @@ vector<T, Alloc>::vector(std::size_t n, const T &val, const Alloc &alloc)
   if (n > 0) {
     this->allocate(n);
     this->construct(n, val);
-  } else {
+  }
+  // FIXME: necessary？ 
+  else {
     m_begin = m_end = m_cap = nullptr;
   }
 }
@@ -202,8 +202,6 @@ vector<T, Alloc>::vector(
   if (n > 0) {
     this->allocate(n);
     this->construct(first, last, n);
-  } else {
-    m_begin = m_end = m_cap = nullptr;
   }
 }
 
@@ -225,8 +223,6 @@ vector<T, Alloc>::vector(std::initializer_list<T> init, const Alloc &alloc)
   if (n > 0) {
     this->allocate(n);
     this->construct(init.begin(), init.end(), n);
-  } else {
-    m_begin = m_end = m_cap = nullptr;
   }
 }
 
@@ -240,8 +236,6 @@ vector<T, Alloc>::vector(const vector &other)
   if (n > 0) {
     this->allocate(n);
     this->construct(other.begin(), other.end(), n);
-  } else {
-    m_end = m_cap = m_begin = nullptr;
   }
 }
 
@@ -252,8 +246,6 @@ vector<T, Alloc>::vector(const vector &other, const Alloc &alloc)
   if (n > 0) {
     this->allocate(n);
     this->construct(other.begin(), other.end(), n);
-  } else {
-    m_begin = m_end = m_cap = nullptr;
   }
 }
 
@@ -282,24 +274,69 @@ vector<T, Alloc>::vector(vector &&other, const Alloc &alloc) : m_alloc(alloc) {
         std::make_move_iterator(other.begin()),
         std::make_move_iterator(other.end()), n
       );
-    } else {
-      m_begin = m_end = m_cap = nullptr;
     }
   }
 }
 
 template <class T, class Alloc>
-vector<T, Alloc>::~vector() {}
+vector<T, Alloc>::~vector() {
+  if (m_begin != nullptr) {
+    this->clear();
+    this->deallocate();
+  }
+}
 
 template <class T, class Alloc>
-vector<T, Alloc> &vector<T, Alloc>::operator=(const vector &other) {}
+vector<T, Alloc> &vector<T, Alloc>::operator=(const vector &other) {
+  if (this != std::addressof(other)) {
+    if constexpr (alloc_traits::propagate_on_container_copy_assignment::value) {
+      if (m_alloc != other.m_alloc) {
+        this->clear();
+        this->deallocate();
+      }
+
+      m_alloc = other.m_alloc;
+    }
+
+    this->assign(other.begin(), other.end());
+  }
+
+  return *this;
+}
 
 template <class T, class Alloc>
-vector<T, Alloc> &vector<T, Alloc>::operator=(vector &&other) {}
+vector<T, Alloc> &vector<T, Alloc>::operator=(vector &&other) {
+  if constexpr (alloc_traits::propagate_on_container_move_assignment::value) {
+    this->deallocate();
+    m_alloc = std::move(other.m_alloc);
+    this->m_begin = other.m_begin;
+    this->m_end = other.m_end;
+    this->m_cap = other.m_cap;
+    other.m_begin = other.m_end = other.m_cap = nullptr;
+  } else {
+    if (m_alloc != other.m_alloc) {
+      assign(
+        std::make_move_iterator(other.begin()),
+        std::make_move_iterator(other.end())
+      );
+    } else {
+      this->deallocate();
+      this->m_begin = other.m_begin;
+      this->m_end = other.m_end;
+      this->m_cap = other.m_cap;
+      other.m_begin = other.m_end = other.m_cap = nullptr;
+    }
+  }
+
+  return *this;
+}
 
 template <class T, class Alloc>
 vector<T, Alloc> &
-vector<T, Alloc>::operator=(std::initializer_list<value_type> init) {}
+vector<T, Alloc>::operator=(std::initializer_list<value_type> init) {
+  assign(init.begin(), init.end());
+  return *this;
+}
 
 template <class T, class Alloc>
 void vector<T, Alloc>::assign(std::size_t n, const T &val) {
@@ -344,8 +381,8 @@ void vector<T, Alloc>::assign(ForwardIter first, ForwardIter last) {
 
 template <class T, class Alloc>
 template <std::input_iterator InputIter>
-requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
-         (!std::forward_iterator<InputIter>)
+  requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+           (!std::forward_iterator<InputIter>)
 void vector<T, Alloc>::assign(InputIter first, InputIter last) {
   pointer cur = m_begin;
   for (; cur != m_end && first != last; ++cur, ++first) {
@@ -428,7 +465,9 @@ void vector<T, Alloc>::construct(std::size_t n, const T &val) {
 
 template <class T, class Alloc>
 template <class InputIter, class Sentinel>
-void vector<T, Alloc>::construct(InputIter first, Sentinel last, std::size_t n) {
+void vector<T, Alloc>::construct(
+  InputIter first, Sentinel last, std::size_t n
+) {
   // FIXME: check last and n
   m_end = m_begin;
   for (std::size_t i = 0; i < n; ++i) {
