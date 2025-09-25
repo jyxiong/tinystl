@@ -185,10 +185,6 @@ vector<T, Alloc>::vector(std::size_t n, const T &val, const Alloc &alloc)
     this->allocate(n);
     this->construct(n, val);
   }
-  // FIXME: necessary？ 
-  else {
-    m_begin = m_end = m_cap = nullptr;
-  }
 }
 
 template <class T, class Alloc>
