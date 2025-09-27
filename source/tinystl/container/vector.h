@@ -136,6 +136,8 @@ private:
 
   void destruct(pointer new_last);
 
+  void move(pointer first, pointer last, pointer dst_first);
+
 private:
   Alloc m_alloc;
   pointer m_begin = nullptr;
@@ -729,6 +731,52 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, size_type n, const_reference val) {
+  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  pointer p = m_begin + offset;
+  if (n > 0) {
+    if (n <= static_cast<size_type>(m_cap - m_end)) {
+      size_type right_sz = static_cast<size_type>(m_end - p);
+      if (n > right_sz) {
+        size_type extra_sz = n - right_sz;
+        this->construct(extra_sz, val);
+        n -= extra_sz;
+      }
+      if (n > 0) {
+
+      }
+    } else {
+      size_type sz = this->recommend(this->size() + n);
+      pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+      pointer new_end = new_begin;
+      pointer new_cap = new_begin + sz;
+
+      if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(m_begin, p, new_begin);
+      } else {
+        new_end = std::uninitialized_copy(m_begin, p, new_begin);
+      }
+
+      for (size_type i = 0; i < n; ++i) {
+        alloc_traits::construct(m_alloc, new_end, val);
+        ++new_end;
+      }
+
+      if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(p, m_end, new_end);
+      } else {
+        new_end = std::uninitialized_copy(p, m_end, new_end);
+      }
+
+      this->destruct(m_begin);
+      this->deallocate();
+
+      m_begin = new_begin;
+      m_end = new_end;
+      m_cap = new_cap;
+
+      return iterator(m_begin + offset);
+    }
+  }
 }
 
 template <class T, class Alloc>
@@ -816,4 +864,24 @@ void vector<T, Alloc>::destruct(pointer new_last) {
   }
   m_end = new_last;
 }
+
+template <class T, class Alloc>
+void vector<T, Alloc>::move(pointer from_s, pointer from_e, pointer to) {
+  pointer old_last = m_end;
+  difference_type n = old_last - to;
+
+  if (from_s + n < from_e) {
+    pointer i = from_s + n;
+    pointer pos = old_last;
+
+    for (; i < from_e; ++i, ++pos) {
+      alloc_traits::construct(m_alloc, std::to_address(pos), std::move(*i));
+    }
+
+    m_end = pos;
+  }
+
+  std::move_backward(from_s, from_s + n, old_last);
+}
+
 } // namespace tinystl
