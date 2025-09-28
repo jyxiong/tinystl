@@ -863,7 +863,19 @@ template <std::input_iterator InputIter>
   requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
            (!std::forward_iterator<InputIter>)
 typename vector<T, Alloc>::iterator
-vector<T, Alloc>::insert(const_iterator pos, InputIter first, InputIter last) {}
+vector<T, Alloc>::insert(const_iterator pos, InputIter first, InputIter last) {
+  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  pointer p = m_begin + offset;
+  pointer old_end = m_end;
+
+  for (; first != last; ++first) {
+    this->emplace_back(*first);
+  }
+
+  std::rotate(p, old_end, m_end);
+
+  return iterator(p);
+}
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
