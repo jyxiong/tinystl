@@ -102,8 +102,14 @@ public:
   iterator insert(const_iterator pos, const_reference val);
   iterator insert(const_iterator pos, value_type &&val);
   iterator insert(const_iterator pos, size_type n, const_reference val);
-  template <class InputIter>
+  template <std::forward_iterator ForwardIter>
+    requires std::constructible_from<T, std::iter_reference_t<ForwardIter>>
+  iterator insert(const_iterator pos, ForwardIter first, ForwardIter last);
+  template <std::input_iterator InputIter>
+    requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+             (!std::forward_iterator<InputIter>)
   iterator insert(const_iterator pos, InputIter first, InputIter last);
+  iterator insert(const_iterator pos, std::initializer_list<T> init);
   template <class... Args>
   iterator emplace(const_iterator pos, Args &&...args);
   iterator erase(const_iterator pos);
@@ -135,6 +141,8 @@ private:
   void construct(InputIter first, Sentinel last, size_type n);
 
   void destruct(pointer new_last);
+
+  void move_to_insert(pointer first, pointer last, pointer dst_first);
 
 private:
   Alloc m_alloc;
@@ -586,7 +594,7 @@ void vector<T, Alloc>::reserve(size_type n) {
     }
 
     m_begin = new_begin;
-    m_end = new_end; 
+    m_end = new_end;
     m_cap = new_cap;
   }
 }
@@ -640,12 +648,17 @@ vector<T, Alloc>::insert(const_iterator pos, const_reference val) {
     if (p == m_end) {
       this->construct(1, val);
     } else {
-      alloc_traits::consturct(m_alloc, m_end, std::move(*(m_end - 1)));
-      ++m_end;
-      std::move_backward(p, m_end - 2, m_end - 1);
+      this->move_to_insert(p, m_end, p + 1);
+
+      const_pointer pval = std::pointer_traits<pointer>::pointer_to(val);
+      const_pointer pp = std::to_address(p);
+      const_pointer pend = std::to_address(m_end);
+      if (!(pp <= pval && pval < pend)) {
+        pval += 1;
+      }
+
       *p = val;
     }
-    return iterator(p);
   } else {
     size_type sz = this->recommend(this->size() + 1);
     pointer new_begin = alloc_traits::allocate(m_alloc, sz);
@@ -673,9 +686,9 @@ vector<T, Alloc>::insert(const_iterator pos, const_reference val) {
     m_begin = new_begin;
     m_end = new_end;
     m_cap = new_cap;
-
-    return iterator(m_begin + offset);
   }
+
+  return iterator(p);
 }
 
 template <class T, class Alloc>
@@ -688,12 +701,9 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
       alloc_traits::construct(m_alloc, p, std::move(val));
       ++m_end;
     } else {
-      alloc_traits::construct(m_alloc, m_end, std::move(*(m_end - 1)));
-      ++m_end;
-      std::move_backward(p, m_end - 2, m_end - 1);
+      this->move_to_insert(p, m_end, p + 1);
       *p = std::move(val);
     }
-    return iterator(p);
   } else {
     size_type sz = this->recommend(this->size() + 1);
     pointer new_begin = alloc_traits::allocate(m_alloc, sz);
@@ -701,7 +711,7 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
     pointer new_cap = new_begin + sz;
 
     if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
-      new_end = std::uninitialized_move(m_begin, p, new_begin);    
+      new_end = std::uninitialized_move(m_begin, p, new_begin);
     } else {
       new_end = std::uninitialized_copy(m_begin, p, new_begin);
     }
@@ -710,7 +720,7 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
     ++new_end;
 
     if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
-      new_end = std::uninitialized_move(p, m_end, new_end);    
+      new_end = std::uninitialized_move(p, m_end, new_end);
     } else {
       new_end = std::uninitialized_copy(p, m_end, new_end);
     }
@@ -721,20 +731,145 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
     m_begin = new_begin;
     m_end = new_end;
     m_cap = new_cap;
-
-    return iterator(m_begin + offset);
   }
+  return iterator(p);
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, size_type n, const_reference val) {
+  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  pointer p = m_begin + offset;
+  if (n > 0) {
+    if (n <= static_cast<size_type>(m_cap - m_end)) {
+      pointer old_end = m_end;
+      size_type old_n = n;
+
+      size_type dx = static_cast<size_type>(m_end - p);
+      if (n > dx) {
+        this->construct(n - dx, val);
+        n = dx;
+      }
+
+      if (n > 0) {
+        this->move_to_insert(p, old_end, p + old_n);
+
+        const_pointer pval = std::pointer_traits<pointer>::pointer_to(val);
+        const_pointer pp = std::to_address(p);
+        const_pointer pend = std::to_address(m_end);
+        if (!(pp <= pval && pval < pend)) {
+          pval += old_n;
+        }
+        std::fill_n(p, n, *pval);
+      }
+    } else {
+      size_type sz = this->recommend(this->size() + n);
+      pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+      pointer new_end = new_begin;
+      pointer new_cap = new_begin + sz;
+
+      if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(m_begin, p, new_begin);
+      } else {
+        new_end = std::uninitialized_copy(m_begin, p, new_begin);
+      }
+
+      for (size_type i = 0; i < n; ++i) {
+        alloc_traits::construct(m_alloc, new_end, val);
+        ++new_end;
+      }
+
+      if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(p, m_end, new_end);
+      } else {
+        new_end = std::uninitialized_copy(p, m_end, new_end);
+      }
+
+      this->destruct(m_begin);
+      this->deallocate();
+
+      m_begin = new_begin;
+      m_end = new_end;
+      m_cap = new_cap;
+    }
+  }
+
+  return iterator(p);
 }
 
 template <class T, class Alloc>
-template <class InputIter>
+template <std::forward_iterator ForwardIter>
+  requires std::constructible_from<T, std::iter_reference_t<ForwardIter>>
+typename vector<T, Alloc>::iterator vector<T, Alloc>::insert(
+  const_iterator pos, ForwardIter first, ForwardIter last
+) {
+  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  pointer p = m_begin + offset;
+
+  difference_type n = std::distance(first, last);
+
+  if (n > 0) {
+    if (n <= static_cast<size_type>(m_cap - m_end)) {
+      pointer old_end = m_end;
+
+      size_type dx = static_cast<size_type>(m_end - p);
+      if (n > dx) {
+        ForwardIter m = std::next(first, dx);
+        this->construct(m, last, n - dx);
+        n = dx;
+      }
+      if (n > 0) {
+        this->move_to_insert(p, old_end, p + n);
+        std::copy_n(first, n, p);
+      }
+    } else {
+      size_type sz = this->recommend(this->size() + n);
+      pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+      pointer new_end = new_begin;
+      pointer new_cap = new_begin + sz;
+
+      if constexpr (std::is_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(m_begin, p, new_begin);
+      } else {
+        new_end = std::uninitialized_copy(m_begin, p, new_begin);
+      }
+
+      for (size_type i = 0; i < n; ++i) {
+        alloc_traits::construct(m_alloc, new_end, *first);
+        ++new_end;
+        ++first;
+      }
+
+      if constexpr (std::is_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(p, m_end, new_end);
+      } else {
+        new_end = std::uninitialized_copy(p, m_end, new_end);
+      }
+
+      this->destruct(m_begin);
+      this->deallocate();
+
+      m_begin = new_begin;
+      m_end = new_end;
+      m_cap = new_cap;
+    }
+  }
+
+  return iterator(p);
+}
+
+template <class T, class Alloc>
+template <std::input_iterator InputIter>
+  requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+           (!std::forward_iterator<InputIter>)
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, InputIter first, InputIter last) {}
+
+template <class T, class Alloc>
+typename vector<T, Alloc>::iterator
+vector<T, Alloc>::insert(const_iterator pos, std::initializer_list<T> init) {
+  return insert(pos, init.begin(), init.end());
+}
 
 /* -------------------------------------------------------------------------- */
 /*                          private member functions                          */
@@ -816,4 +951,20 @@ void vector<T, Alloc>::destruct(pointer new_last) {
   }
   m_end = new_last;
 }
+
+template <class T, class Alloc>
+void vector<T, Alloc>::move_to_insert(
+  pointer from_s, pointer from_e, pointer to
+) {
+  pointer from_mid = from_s + (m_end - to);
+  pointer new_end = m_end;
+  for (; from_mid < from_e; ++from_mid, ++new_end) {
+    alloc_traits::construct(m_alloc, new_end, std::move(*from_mid));
+  }
+
+  std::move_backward(from_s, from_mid, m_end);
+
+  m_end = new_end;
+}
+
 } // namespace tinystl
