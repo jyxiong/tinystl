@@ -23,8 +23,8 @@ public:
   using const_pointer = const T *;
   using iterator = T *;
   using const_iterator = const T *;
-  using reverse_iterator = std::reverse_iterator<T *>;
-  using const_reverse_iterator = std::reverse_iterator<T *>;
+  using reverse_iterator = std::reverse_iterator<pointer>;
+  using const_reverse_iterator = std::reverse_iterator<const_pointer>;
 
   // construct/copy/destroy
   vector() noexcept(noexcept(Alloc()));
@@ -122,12 +122,13 @@ public:
   void resize(size_type n);
   void resize(size_type n, const_reference val);
   void swap(vector &other) noexcept(
-    alloc_traits::propagate_on_container_swap::val ||
-    alloc_traits::is_always_equal::val
+    alloc_traits::propagate_on_container_swap::value ||
+    alloc_traits::is_always_equal::value
   );
 
 private:
   void throw_length_error();
+  void throw_out_of_range();
 
   size_type recommend(size_type new_size);
 
@@ -152,19 +153,33 @@ private:
 };
 
 template <class T, class Alloc>
-bool operator==(const vector<T, Alloc> &lhs, const vector<T, Alloc> &rhs);
+bool operator==(const vector<T, Alloc> &lhs, const vector<T, Alloc> &rhs) {
+  return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+}
 
 template <class T, class Alloc>
-auto operator<=>(const vector<T, Alloc> &lhs, const vector<T, Alloc> &rhs);
+auto operator<=>(const vector<T, Alloc> &lhs, const vector<T, Alloc> &rhs) {
+  return std::lexicographical_compare_three_way(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::compare_three_way());
+}
 
 template <class T, class Alloc>
-void swap(vector<T, Alloc> &lhs, vector<T, Alloc> &rhs) noexcept;
+void swap(vector<T, Alloc> &lhs, vector<T, Alloc> &rhs) noexcept {
+  lhs.swap(rhs);
+}
 
 template <class T, class Alloc, class U>
-typename vector<T, Alloc>::size_type erase(vector<T, Alloc> &c, const U &val);
+typename vector<T, Alloc>::size_type erase(vector<T, Alloc> &c, const U &val) {
+  typename vector<T, Alloc>::size_type old_sz = c.size();
+  c.erase(std::remove(c.begin(), c.end(), val), c.end());
+  return old_sz - c.size();
+}
 
 template <class T, class Alloc, class Pred>
-typename vector<T, Alloc>::size_type erase_if(vector<T, Alloc> &c, Pred pred);
+typename vector<T, Alloc>::size_type erase_if(vector<T, Alloc> &c, Pred pred) {
+  typename vector<T, Alloc>::size_type old_sz = c.size();
+  c.erase(std::remove_if(c.begin(), c.end(), pred), c.end());
+  return old_sz - c.size();
+}
 
 /* -------------------------------------------------------------------------- */
 /*                           public member functions                          */
@@ -419,7 +434,7 @@ Alloc vector<T, Alloc>::get_allocator() const {
 template <class T, class Alloc>
 typename vector<T, Alloc>::reference vector<T, Alloc>::at(size_type pos) {
   if (pos >= this->size()) {
-    this->throw_length_error();
+    this->throw_out_of_range();
   }
   return m_begin[pos];
 }
@@ -428,7 +443,7 @@ template <class T, class Alloc>
 typename vector<T, Alloc>::const_reference
 vector<T, Alloc>::at(size_type pos) const {
   if (pos >= this->size()) {
-    this->throw_length_error();
+    this->throw_out_of_range();
   }
   return m_begin[pos];
 }
@@ -436,38 +451,38 @@ vector<T, Alloc>::at(size_type pos) const {
 template <class T, class Alloc>
 typename vector<T, Alloc>::reference
 vector<T, Alloc>::operator[](size_type pos) {
-  assert(pos < this->size(), "vector[] index out of bounds");
+  assert(pos < this->size() && "vector[] index out of bounds");
   return m_begin[pos];
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::const_reference
 vector<T, Alloc>::operator[](size_type pos) const {
-  assert(pos < this->size(), "vector[] index out of bounds");
+  assert(pos < this->size() && "vector[] index out of bounds");
   return m_begin[pos];
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::reference vector<T, Alloc>::front() {
-  assert(!this->empty(), "front() called on an empty vector");
+  assert(!this->empty() && "front() called on an empty vector");
   return *m_begin;
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::const_reference vector<T, Alloc>::front() const {
-  assert(!this->empty(), "front() called on an empty vector");
+  assert(!this->empty() && "front() called on an empty vector");
   return *m_begin;
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::reference vector<T, Alloc>::back() {
-  assert(!this->empty(), "back() called on an empty vector");
+  assert(!this->empty() && "back() called on an empty vector");
   return *(m_end - 1);
 }
 
 template <class T, class Alloc>
 typename vector<T, Alloc>::const_reference vector<T, Alloc>::back() const {
-  assert(!this->empty(), "back() called on an empty vector");
+  assert(!this->empty() && "back() called on an empty vector");
   return *(m_end - 1);
 }
 
@@ -642,7 +657,7 @@ void vector<T, Alloc>::clear() noexcept {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, const_reference val) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
   if (m_end < m_cap) {
     if (p == m_end) {
@@ -686,6 +701,8 @@ vector<T, Alloc>::insert(const_iterator pos, const_reference val) {
     m_begin = new_begin;
     m_end = new_end;
     m_cap = new_cap;
+
+    p = m_begin + offset;
   }
 
   return iterator(p);
@@ -694,7 +711,7 @@ vector<T, Alloc>::insert(const_iterator pos, const_reference val) {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
   if (m_end < m_cap) {
     if (p == m_end) {
@@ -731,6 +748,8 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
     m_begin = new_begin;
     m_end = new_end;
     m_cap = new_cap;
+
+    p = m_begin + offset;
   }
   return iterator(p);
 }
@@ -738,7 +757,7 @@ vector<T, Alloc>::insert(const_iterator pos, value_type &&val) {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, size_type n, const_reference val) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
   if (n > 0) {
     if (n <= static_cast<size_type>(m_cap - m_end)) {
@@ -754,7 +773,7 @@ vector<T, Alloc>::insert(const_iterator pos, size_type n, const_reference val) {
       if (n > 0) {
         this->move_to_insert(p, old_end, p + old_n);
 
-        const_pointer pval = std::pointer_traits<pointer>::pointer_to(val);
+        const_pointer pval = std::pointer_traits<const_pointer>::pointer_to(val);
         const_pointer pp = std::to_address(p);
         const_pointer pend = std::to_address(m_end);
         if (!(pp <= pval && pval < pend)) {
@@ -791,6 +810,8 @@ vector<T, Alloc>::insert(const_iterator pos, size_type n, const_reference val) {
       m_begin = new_begin;
       m_end = new_end;
       m_cap = new_cap;
+
+      p = m_begin + offset;
     }
   }
 
@@ -803,11 +824,10 @@ template <std::forward_iterator ForwardIter>
 typename vector<T, Alloc>::iterator vector<T, Alloc>::insert(
   const_iterator pos, ForwardIter first, ForwardIter last
 ) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
 
   difference_type n = std::distance(first, last);
-
   if (n > 0) {
     if (n <= static_cast<size_type>(m_cap - m_end)) {
       pointer old_end = m_end;
@@ -852,6 +872,8 @@ typename vector<T, Alloc>::iterator vector<T, Alloc>::insert(
       m_begin = new_begin;
       m_end = new_end;
       m_cap = new_cap;
+
+      p = m_begin + offset;
     }
   }
 
@@ -864,8 +886,9 @@ template <std::input_iterator InputIter>
            (!std::forward_iterator<InputIter>)
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, InputIter first, InputIter last) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
+
   pointer old_end = m_end;
 
   for (; first != last; ++first) {
@@ -873,6 +896,8 @@ vector<T, Alloc>::insert(const_iterator pos, InputIter first, InputIter last) {
   }
 
   std::rotate(p, old_end, m_end);
+
+  p = m_begin + offset;
 
   return iterator(p);
 }
@@ -887,7 +912,7 @@ template <class T, class Alloc>
 template <class... Args>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::emplace(const_iterator pos, Args &&...args) {
-  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  difference_type offset = std::distance(this->cbegin(), pos);
   pointer p = m_begin + offset;
   if (m_end < m_cap) {
     if (p == m_end) {
@@ -899,7 +924,7 @@ vector<T, Alloc>::emplace(const_iterator pos, Args &&...args) {
     }
   } else {
     size_type sz = this->recommend(this->size() + 1);
-    pointer new_begin = alloc_traits::allocate(sz);
+    pointer new_begin = alloc_traits::allocate(m_alloc, sz);
     pointer new_end = new_begin;
     pointer new_cap = new_begin + sz;
 
@@ -924,6 +949,8 @@ vector<T, Alloc>::emplace(const_iterator pos, Args &&...args) {
     m_begin = new_begin;
     m_end = new_end;
     m_cap = new_cap;
+
+    p = m_begin + offset;
   }
 
   return iterator(p);
@@ -932,9 +959,9 @@ vector<T, Alloc>::emplace(const_iterator pos, Args &&...args) {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::erase(const_iterator pos) {
-  assert(pos != this->end(), "vector::erase(iterator) called with a non-dereferenceable iterator");
+  assert(pos != this->end() && "vector::erase(iterator) called with a non-dereferenceable iterator");
 
-  pointer p = m_begin + (this->cbegin() - pos);
+  pointer p = m_begin + (pos - this->cbegin());
   this->destruct(std::move(p + 1, m_end, p));
 
   return iterator(p);
@@ -943,7 +970,7 @@ vector<T, Alloc>::erase(const_iterator pos) {
 template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::erase(const_iterator first, const_iterator last) {
-  assert(first <= last, "vector::erase(first, last) called with invalid range");
+  assert(first <= last && "vector::erase(first, last) called with invalid range");
 
   pointer p = m_begin + (first - this->cbegin());
   if (first != last) {
@@ -998,7 +1025,7 @@ vector<T, Alloc>::emplace_back(Args &&...args) {
 
 template <class T, class Alloc>
 void vector<T, Alloc>::pop_back() {
-  assert(!empty(), "vector::pop_back called on an empty vector");
+  assert(!empty() && "vector::pop_back called on an empty vector");
   this->destruct(m_end - 1);
 }
 
@@ -1078,20 +1105,20 @@ void vector<T, Alloc>::resize(size_type new_sz, const_reference val) {
 
 template <class T, class Alloc>
 void vector<T, Alloc>::swap(vector &other) noexcept(
-  alloc_traits::propagate_on_container_swap::val ||
-  alloc_traits::is_always_equal::val
+  alloc_traits::propagate_on_container_swap::value ||
+  alloc_traits::is_always_equal::value
 ) {
   assert(
     alloc_traits::propagate_on_container_swap::value ||
-      m_alloc == other.m_alloc,
-    "vector::swap: Either propagate_on_container_swap must be true or the "
-    "allocators must compare equal"
+    m_alloc == other.m_alloc &&
+      "vector::swap: Either propagate_on_container_swap must be true or the "
+      "allocators must compare equal"
   );
 
   std::swap(m_begin, other.m_begin);
   std::swap(m_end, other.m_end);
   std::swap(m_cap, other.m_cap);
-  if constexpr (std::bool_constant<alloc_traits::propagate_pn_container_swap::value>::value) {
+  if constexpr (alloc_traits::propagate_on_container_swap::value) {
     std::swap(m_alloc, other.m_alloc);
   }
 }
@@ -1102,6 +1129,11 @@ void vector<T, Alloc>::swap(vector &other) noexcept(
 template <class T, class Alloc>
 void vector<T, Alloc>::throw_length_error() {
   throw std::length_error("vector");
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::throw_out_of_range() {
+  throw std::out_of_range("vector");
 }
 
 template <class T, class Alloc>
