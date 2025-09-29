@@ -119,8 +119,8 @@ public:
   template <class... Args>
   reference emplace_back(Args &&...args);
   void pop_back();
-  void resize(size_type sz);
-  void resize(size_type sz, const_reference val);
+  void resize(size_type n);
+  void resize(size_type n, const_reference val);
   void swap(vector &other) noexcept(
     alloc_traits::propagate_on_container_swap::val ||
     alloc_traits::is_always_equal::val
@@ -881,6 +881,219 @@ template <class T, class Alloc>
 typename vector<T, Alloc>::iterator
 vector<T, Alloc>::insert(const_iterator pos, std::initializer_list<T> init) {
   return insert(pos, init.begin(), init.end());
+}
+
+template <class T, class Alloc>
+template <class... Args>
+typename vector<T, Alloc>::iterator
+vector<T, Alloc>::emplace(const_iterator pos, Args &&...args) {
+  size_type offset = static_cast<size_type>(std::distance(this->begin(), pos));
+  pointer p = m_begin + offset;
+  if (m_end < m_cap) {
+    if (p == m_end) {
+      alloc_traits::construct(m_alloc, p, std::forward<Args>(args)...);
+      ++m_end;
+    } else {
+      this->move_to_insert(p, m_end, p + 1);
+      alloc_traits::construct(m_alloc, p, std::forward<Args>(args)...);
+    }
+  } else {
+    size_type sz = this->recommend(this->size() + 1);
+    pointer new_begin = alloc_traits::allocate(sz);
+    pointer new_end = new_begin;
+    pointer new_cap = new_begin + sz;
+
+    if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+      new_end = std::uninitialized_move(m_begin, p, new_begin);
+    } else {
+      new_end = std::uninitialized_copy(m_begin, p, new_begin);
+    }
+
+    alloc_traits::construct(m_alloc, new_end, std::forward<Args>(args)...);
+    ++new_end;
+
+    if constexpr (std::is_nothrow_move_constructible_v<value_type>) {
+      new_end = std::uninitialized_move(p, m_end, new_end);
+    } else {
+      new_end = std::uninitialized_copy(p, m_end, new_end);
+    }
+
+    this->destruct(m_begin);
+    this->deallocate();
+
+    m_begin = new_begin;
+    m_end = new_end;
+    m_cap = new_cap;
+  }
+
+  return iterator(p);
+}
+
+template <class T, class Alloc>
+typename vector<T, Alloc>::iterator
+vector<T, Alloc>::erase(const_iterator pos) {
+  assert(pos != this->end(), "vector::erase(iterator) called with a non-dereferenceable iterator");
+
+  pointer p = m_begin + (this->cbegin() - pos);
+  this->destruct(std::move(p + 1, m_end, p));
+
+  return iterator(p);
+}
+
+template <class T, class Alloc>
+typename vector<T, Alloc>::iterator
+vector<T, Alloc>::erase(const_iterator first, const_iterator last) {
+  assert(first <= last, "vector::erase(first, last) called with invalid range");
+
+  pointer p = m_begin + (first - this->cbegin());
+  if (first != last) {
+    this->destruct(std::move(p + (last - first), m_end, p));
+  }
+
+  return iterator(p);
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::push_back(const_reference val) {
+  this->emplace_back(val);
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::push_back(value_type &&val) {
+  this->emplace_back(std::move(val));
+}
+
+template <class T, class Alloc>
+template <class... Args>
+typename vector<T, Alloc>::reference
+vector<T, Alloc>::emplace_back(Args &&...args) {
+  if (m_end < m_cap) {
+    alloc_traits::construct(m_alloc, std::to_address(m_end), std::forward<Args>(args)...);
+    ++m_end;
+  } else {
+    size_type sz = this->recommend(this->size() + 1);
+    pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+    pointer new_end = new_begin;
+    pointer new_cap = new_begin + sz;
+
+    if constexpr (std::is_move_constructible_v<value_type>) {
+      new_end = std::uninitialized_move(m_begin, m_end, new_begin);
+    } else {
+      new_end = std::uninitialized_copy(m_begin, m_end, new_begin);
+    }
+
+    alloc_traits::construct(m_alloc, new_end, std::forward<Args>(args)...);
+    ++new_end;
+
+    this->destruct(m_begin);
+    this->deallocate();
+
+    m_begin = new_begin;
+    m_end = new_end;
+    m_cap = new_cap;
+  }
+
+  return *(m_end - 1);
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::pop_back() {
+  assert(!empty(), "vector::pop_back called on an empty vector");
+  this->destruct(m_end - 1);
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::resize(size_type new_sz) {
+  size_type sz = this->size();
+
+  if (sz < new_sz) {
+    size_type n = new_sz - sz;
+    if (n <= static_cast<size_type>(m_cap - m_end)) {
+      this->construct(n);
+    } else {
+      size_type sz = this->recommend(this->size() + n);
+      pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+      pointer new_end = new_begin;
+      pointer new_cap = new_begin + sz;
+
+      if constexpr (std::is_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(m_begin, m_end, new_begin);
+      } else {
+        new_end = std::uninitialized_copy(m_begin, m_end, new_begin);
+      }
+
+      for (size_type i = 0; i < n; ++i) {
+        alloc_traits::construct(m_alloc, new_end);
+        ++new_end;
+      }
+
+      this->destruct(m_begin);
+      this->deallocate();
+
+      m_begin = new_begin;
+      m_end = new_end;
+      m_cap = new_cap;
+    }
+  } else if (sz > new_sz) {
+    this->destruct(m_begin + new_sz);
+  }
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::resize(size_type new_sz, const_reference val) {
+  size_type sz = this->size();
+
+  if (sz < new_sz) {
+    size_type n = new_sz - sz;
+    if (n <= static_cast<size_type>(m_cap - m_end)) {
+      this->construct(n, val);
+    } else {
+      size_type sz = this->recommend(this->size() + n);
+      pointer new_begin = alloc_traits::allocate(m_alloc, sz);
+      pointer new_end = new_begin;
+      pointer new_cap = new_begin + sz;
+
+      if constexpr (std::is_move_constructible_v<value_type>) {
+        new_end = std::uninitialized_move(m_begin, m_end, new_begin);
+      } else {
+        new_end = std::uninitialized_copy(m_begin, m_end, new_begin);
+      }
+
+      for (size_type i = 0; i < n; ++i) {
+        alloc_traits::construct(m_alloc, new_end, val);
+        ++new_end;
+      }
+
+      this->destruct(m_begin);
+      this->deallocate();
+
+      m_begin = new_begin;
+      m_end = new_end;
+      m_cap = new_cap;
+    }
+  } else if (sz > new_sz) {
+    this->destruct(m_begin + new_sz);
+  }
+}
+
+template <class T, class Alloc>
+void vector<T, Alloc>::swap(vector &other) noexcept(
+  alloc_traits::propagate_on_container_swap::val ||
+  alloc_traits::is_always_equal::val
+) {
+  assert(
+    alloc_traits::propagate_on_container_swap::value ||
+      m_alloc == other.m_alloc,
+    "vector::swap: Either propagate_on_container_swap must be true or the "
+    "allocators must compare equal"
+  );
+
+  std::swap(m_begin, other.m_begin);
+  std::swap(m_end, other.m_end);
+  std::swap(m_cap, other.m_cap);
+  if constexpr (std::bool_constant<alloc_traits::propagate_pn_container_swap::value>::value) {
+    std::swap(m_alloc, other.m_alloc);
+  }
 }
 
 /* -------------------------------------------------------------------------- */
