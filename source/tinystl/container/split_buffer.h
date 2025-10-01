@@ -16,7 +16,7 @@ public:
   using reference = value_type &;
   using const_reference = const value_type &;
   using alloc_rr = std::remove_reference_t<allocator_type>;
-  using alloc_traits = std::allocator_traits<allocator_type>;
+  using alloc_traits = std::allocator_traits<alloc_rr>;
   using size_type = typename alloc_traits::size_type;
   using difference_type = typename alloc_traits::difference_type;
   using pointer = typename alloc_traits::pointer;
@@ -96,6 +96,7 @@ public:
     std::is_nothrow_swappable_v<alloc_rr>
   );
 
+private:
   void swap_without_alloc(split_buffer<value_type, alloc_rr &> &other) noexcept;
 
   void copy_without_alloc(const split_buffer &other) noexcept(
@@ -223,7 +224,7 @@ void split_buffer<T, Alloc>::shrink_to_fit() noexcept {
   size_type cap = this->capacity();
   size_type sz = this->size();
   if (cap > sz) {
-    split_buffer<value_type, alloc_rr> sb(sz, 0, m_alloc);
+    split_buffer<value_type, alloc_rr &> sb(sz, 0, m_alloc);
     if (sb.capacity() < cap) {
       sb.construct_at_end(
         std::make_move_iterator(m_begin), std::make_move_iterator(m_end)
@@ -246,7 +247,7 @@ void split_buffer<T, Alloc>::emplace_front(Args &&...args) {
       m_end = new_end;
     } else {
       size_type sz = std::max<size_type>(2 * this->capacity(), 1);
-      split_buffer<value_type, alloc_rr> sb(sz, (sz + 3) / 4, m_alloc);
+      split_buffer<value_type, alloc_rr &> sb(sz, (sz + 3) / 4, m_alloc);
       sb.construct_at_end(
         std::make_move_iterator(m_begin), std::make_move_iterator(m_end)
       );
@@ -272,7 +273,7 @@ void split_buffer<T, Alloc>::emplace_back(Args &&...args) {
       m_begin = new_begin;
     } else {
       size_type sz = std::max<size_type>(2 * this->capacity(), 1);
-      split_buffer<value_type, alloc_rr> sb(sz, sz / 4, m_alloc);
+      split_buffer<value_type, alloc_rr &> sb(sz, sz / 4, m_alloc);
       sb.construct_at_end(
         std::make_move_iterator(m_begin), std::make_move_iterator(m_end)
       );
@@ -424,10 +425,13 @@ void split_buffer<T, Alloc>::destruct_at_end(pointer new_end) noexcept {
 
 template <class T, class Alloc>
 bool split_buffer<T, Alloc>::invariants() const {
-  // basic invariants: pointers must be ordered and either all null or all non-null
-  bool all_null = (m_front_cap == nullptr && m_begin == nullptr &&
-                   m_end == nullptr && m_back_cap == nullptr);
-  if (all_null) return true;
+  // basic invariants: pointers must be ordered and either all null or all
+  // non-null
+  bool all_null =
+    (m_front_cap == nullptr && m_begin == nullptr && m_end == nullptr &&
+     m_back_cap == nullptr);
+  if (all_null)
+    return true;
   if (!(m_front_cap <= m_begin && m_begin <= m_end && m_end <= m_back_cap))
     return false;
   return true;
