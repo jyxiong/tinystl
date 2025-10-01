@@ -4,6 +4,7 @@
 #include <iterator>
 #include <memory>
 
+#include "tinystl/container/split_buffer.h"
 #include "tinystl/container/vector.h"
 #include "tinystl/iterator/segmented_iterator.h"
 
@@ -201,25 +202,39 @@ template <class T, class Alloc = std::allocator<T>>
 class deque {
   using alloc_traits = std::allocator_traits<Alloc>;
 
+  using pointer_allocator =
+    alloc_traits::template rebind_alloc<typename alloc_traits::pointer>;
+  using const_pointer_allcoator =
+    alloc_traits::template rebind_alloc<typename alloc_traits::pointer>;
+
+  using map = split_buffer<typename alloc_traits::pointer, pointer_allocator>;
+  using map_pointer =
+    typename std::allocator_traits<pointer_allocator>::pointer;
+  using map_const_pointer =
+    typename std::allocator_traits<const_pointer_allcoator>::const_pointer;
+  using map_const_iterator = typename map::const_iterator;
+
 public:
   using value_type = T;
+  using reference = value_type &;
+  using const_reference = const value_type &;
+
   using allocator_type = Alloc;
+
   using size_type = typename alloc_traits::size_type;
   using difference_type = typename alloc_traits::difference_type;
-  using reference = T &;
-  using const_reference = const T &;
+
   using pointer = typename alloc_traits::pointer;
   using const_pointer = typename alloc_traits::const_pointer;
 
-  using pointer_allocator = alloc_traits::template rebind_alloc<pointer>;
-  using map_alloc_traits = std::allocator_traits<pointer_allocator>;
-  using map_pointer = typename map_alloc_traits::pointer;
-
   using iterator = deque_iterator<
     value_type, pointer, reference, map_pointer, difference_type>;
-  using const_iterator = deque_iterator<value_type, const_pointer, const_reference, map_pointer, difference_type>;
-  using reverse_iterator = std::reverse_iterator<pointer>;
-  using const_reverse_iterator = std::reverse_iterator<const_pointer>;
+  using const_iterator = deque_iterator<
+    value_type, const_pointer, const_reference, map_const_pointer,
+    difference_type>;
+
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   // construct/copy/destroy
   deque();
