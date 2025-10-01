@@ -197,4 +197,158 @@ public:
   }
 };
 
+template <class T, class Alloc = std::allocator<T>>
+class deque {
+  using alloc_traits = std::allocator_traits<Alloc>;
+
+public:
+  using value_type = T;
+  using allocator_type = Alloc;
+  using size_type = typename alloc_traits::size_type;
+  using difference_type = typename alloc_traits::difference_type;
+  using reference = T &;
+  using const_reference = const T &;
+  using pointer = typename alloc_traits::pointer;
+  using const_pointer = typename alloc_traits::const_pointer;
+
+  using pointer_allocator = alloc_traits::template rebind_alloc<pointer>;
+  using map_alloc_traits = std::allocator_traits<pointer_allocator>;
+  using map_pointer = typename map_alloc_traits::pointer;
+
+  using iterator = deque_iterator<
+    value_type, pointer, reference, map_pointer, difference_type>;
+  using const_iterator = deque_iterator<value_type, const_pointer, const_reference, map_pointer, difference_type>;
+  using reverse_iterator = std::reverse_iterator<pointer>;
+  using const_reverse_iterator = std::reverse_iterator<const_pointer>;
+
+  // construct/copy/destroy
+  deque();
+  explicit deque(const Alloc &alloc);
+  explicit deque(size_type n, const Alloc &alloc = Alloc());
+  deque(size_type n, const_reference val, const Alloc &alloc = Alloc());
+  template <class InputIt>
+  deque(InputIt first, InputIt last, const Alloc &alloc = Alloc());
+  deque(const deque &other);
+  deque(const deque &other, const Alloc &alloc);
+  deque(deque &&other) noexcept;
+  deque(deque &&other, const Alloc &alloc);
+  deque(std::initializer_list<value_type> init, const Alloc &alloc = Alloc());
+
+  ~deque();
+
+  deque &operator=(const deque &other);
+  deque &operator=(deque &&other);
+  deque &operator=(std::initializer_list<value_type> init);
+
+  void assign(size_type n, const_reference val);
+  template <class InputIt>
+  void assign(InputIt first, InputIt last);
+  void assign(std::initializer_list<value_type> ilist);
+
+  allocator_type get_allocator() const;
+
+  // element access
+  reference at(size_type pos);
+  const_reference at(size_type pos) const;
+  reference operator[](size_type pos);
+  const_reference operator[](size_type pos) const;
+  reference front();
+  const_reference front() const;
+  reference back();
+  const_reference back() const;
+
+  // iterators
+  iterator begin() noexcept;
+  const_iterator begin() const noexcept;
+  const_iterator cbegin() const noexcept;
+  iterator end() noexcept;
+  const_iterator end() const noexcept;
+  const_iterator cend() const noexcept;
+  reverse_iterator rbegin() noexcept;
+  const_reverse_iterator rbegin() const noexcept;
+  const_reverse_iterator crbegin() const noexcept;
+  reverse_iterator rend() noexcept;
+  const_reverse_iterator rend() const noexcept;
+  const_reverse_iterator crend() const noexcept;
+
+  // capacity
+  bool empty() const noexcept;
+  size_type size() const noexcept;
+  size_type max_size() const noexcept;
+  void shrink_to_fit();
+
+  // modifiers
+  void clear() noexcept;
+  iterator insert(const_iterator pos, const_reference val);
+  iterator insert(const_iterator pos, value_type &&val);
+  iterator insert(const_iterator pos, size_type n, const_reference val);
+  template <std::forward_iterator ForwardIter>
+    requires std::constructible_from<T, std::iter_reference_t<ForwardIter>>
+  iterator insert(const_iterator pos, ForwardIter first, ForwardIter last);
+  template <std::input_iterator InputIter>
+    requires std::constructible_from<T, std::iter_reference_t<InputIter>> &&
+             (!std::forward_iterator<InputIter>)
+  iterator insert(const_iterator pos, InputIter first, InputIter last);
+  iterator insert(const_iterator pos, std::initializer_list<T> init);
+  template <class... Args>
+  iterator emplace(const_iterator pos, Args &&...args);
+  iterator erase(const_iterator pos);
+  iterator erase(const_iterator first, const_iterator last);
+  void push_back(const_reference val);
+  void push_back(value_type &&val);
+  template <class... Args>
+  reference emplace_back(Args &&...args);
+  void pop_back();
+  void push_front(const_reference val);
+  void push_front(value_type &&val);
+  template <class... Args>
+  reference emplace_front(Args &&...args);
+  void pop_front();
+  void resize(size_type n);
+  void resize(size_type n, const_reference val);
+  void swap(deque &other) noexcept(alloc_traits::is_always_equal::value);
+
+private:
+  void throw_length_error();
+  void throw_out_of_range();
+
+  size_type recommend(size_type new_size);
+
+  void allocate(size_type n);
+
+  void deallocate();
+
+  void construct(size_type n);
+  void construct(size_type n, const_reference val);
+  template <class InputIter, class Sentinel>
+  void construct(InputIter first, Sentinel last, size_type n);
+
+  void destruct(pointer new_last);
+
+  void move_to_insert(pointer first, pointer last, pointer dst_first);
+
+private:
+  Alloc m_alloc;
+  pointer m_begin = nullptr;
+  pointer m_end = nullptr;
+  pointer m_cap = nullptr;
+};
+
+template <class T, class Alloc>
+bool operator==(const deque<T, Alloc> &lhs, const deque<T, Alloc> &rhs);
+
+template <class T, class Alloc>
+auto operator<=>(const deque<T, Alloc> &lhs, const deque<T, Alloc> &rhs);
+
+template <class T, class Alloc>
+void swap(deque<T, Alloc> &lhs, deque<T, Alloc> &rhs) noexcept(
+  noexcept(lhs.swap(rhs))
+);
+
+template <class T, class Alloc, class U>
+typename deque<T, Alloc>::size_type erase(vector<T, Alloc> &c, const U &val);
+
+template <class T, class Alloc, class Pred>
+typename deque<T, Alloc>::size_type erase_if(deque<T, Alloc> &c, Pred pred);
+
 } // namespace tinystl
