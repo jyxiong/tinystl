@@ -1,8 +1,9 @@
 #pragma once
 
+#include <algorithm>
 #include <concepts>
-#include <cstddef>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 
@@ -14,17 +15,22 @@ class vector {
 
 public:
   using value_type = T;
+  using reference = value_type &;
+  using const_reference = const value_type &;
+
   using allocator_type = Alloc;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
-  using reference = T &;
-  using const_reference = const T &;
-  using pointer = T *;
-  using const_pointer = const T *;
-  using iterator = T *;
-  using const_iterator = const T *;
-  using reverse_iterator = std::reverse_iterator<pointer>;
-  using const_reverse_iterator = std::reverse_iterator<const_pointer>;
+
+  using size_type = typename alloc_traits::size_type;
+  using difference_type = typename alloc_traits::difference_type;
+
+  using pointer = typename alloc_traits::pointer;
+  using const_pointer = typename alloc_traits::const_pointer;
+
+  using iterator = pointer;
+  using const_iterator = const_pointer;
+
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   // construct/copy/destroy
   vector() noexcept(noexcept(Alloc()));

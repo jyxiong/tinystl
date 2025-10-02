@@ -10,19 +10,25 @@
 namespace tinystl {
 template <class T, class Alloc>
 class split_buffer {
+  using alloc_rr = std::remove_reference_t<Alloc>;
+  using alloc_traits = std::allocator_traits<alloc_rr>;
+
 public:
-  using allocator_type = Alloc;
   using value_type = T;
   using reference = value_type &;
   using const_reference = const value_type &;
-  using alloc_rr = std::remove_reference_t<allocator_type>;
-  using alloc_traits = std::allocator_traits<alloc_rr>;
+
+  using allocator_type = Alloc;
+
   using size_type = typename alloc_traits::size_type;
   using difference_type = typename alloc_traits::difference_type;
+
   using pointer = typename alloc_traits::pointer;
   using const_pointer = typename alloc_traits::const_pointer;
+
   using iterator = pointer;
   using const_iterator = const_pointer;
+
   using sentinel_type = pointer;
 
   split_buffer(const split_buffer &) = delete;
