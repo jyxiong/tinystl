@@ -202,14 +202,13 @@ template <class T, class Alloc = std::allocator<T>>
 class deque {
   using alloc_traits = std::allocator_traits<Alloc>;
 
-  using pointer_allocator =
+  using pointer_alloc =
     alloc_traits::template rebind_alloc<typename alloc_traits::pointer>;
   using const_pointer_allcoator =
     alloc_traits::template rebind_alloc<typename alloc_traits::pointer>;
 
-  using map = split_buffer<typename alloc_traits::pointer, pointer_allocator>;
-  using map_pointer =
-    typename std::allocator_traits<pointer_allocator>::pointer;
+  using map = split_buffer<typename alloc_traits::pointer, pointer_alloc>;
+  using map_pointer = typename std::allocator_traits<pointer_alloc>::pointer;
   using map_const_pointer =
     typename std::allocator_traits<const_pointer_allcoator>::const_pointer;
   using map_const_iterator = typename map::const_iterator;
@@ -324,6 +323,18 @@ public:
   void swap(deque &other) noexcept(alloc_traits::is_always_equal::value);
 
 private:
+  size_type capacity() const;
+  size_type front_spare() const;
+  size_type back_spare() const;
+
+  void append(size_type n);
+  void append(size_type n, const value_type &val);
+
+  void add_front_capacity();
+  void add_front_capacity(size_type n);
+  void add_back_capacity();
+  void add_back_capacity(size_type n);
+
   void throw_length_error();
   void throw_out_of_range();
 
@@ -343,11 +354,20 @@ private:
   void move_to_insert(pointer first, pointer last, pointer dst_first);
 
 private:
+  static const difference_type m_block_size;
+
   Alloc m_alloc;
-  pointer m_begin = nullptr;
-  pointer m_end = nullptr;
-  pointer m_cap = nullptr;
+  map m_map;
+  size_type m_start;
+  size_type m_size;
 };
+
+/* -------------------------------------------------------------------------- */
+/*                           static member variable                           */
+/* -------------------------------------------------------------------------- */
+template <class T, class Alloc>
+const typename deque<T, Alloc>::difference_type deque<T, Alloc>::m_block_size =
+  deque_block_size<value_type, difference_type>::value;
 
 template <class T, class Alloc>
 bool operator==(const deque<T, Alloc> &lhs, const deque<T, Alloc> &rhs);
@@ -366,4 +386,81 @@ typename deque<T, Alloc>::size_type erase(vector<T, Alloc> &c, const U &val);
 template <class T, class Alloc, class Pred>
 typename deque<T, Alloc>::size_type erase_if(deque<T, Alloc> &c, Pred pred);
 
+template <class T, class Alloc>
+deque<T, Alloc>::deque() : m_start(0), m_size(0) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(const Alloc &alloc)
+  : m_map(pointer_alloc(alloc)), m_start(0), m_size(0) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(size_type n, const Alloc &alloc)
+  : m_map(pointer_alloc(alloc)), m_start(0), m_size(0) {
+  if (n > 0) {
+    this->append(n);
+  }
+}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(size_type n, const_reference val, const Alloc &alloc)
+  : m_map(pointer_alloc(alloc)), m_start(0), m_size(0) {
+  if (n > 0) {
+    this->append(n, val);
+  }
+}
+
+template <class T, class Alloc>
+template <class InputIt>
+deque<T, Alloc>::deque(InputIt first, InputIt last, const Alloc &alloc) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(const deque &other) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(const deque &other, const Alloc &alloc) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(deque &&other) noexcept {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(deque &&other, const Alloc &alloc) {}
+
+template <class T, class Alloc>
+deque<T, Alloc>::deque(
+  std::initializer_list<value_type> init, const Alloc &alloc
+) {}
+
+/* -------------------------------------------------------------------------- */
+/*                          private member functions                          */
+/* -------------------------------------------------------------------------- */
+template <class T, class Alloc>
+typename deque<T, Alloc>::size_type deque<T, Alloc>::capacity() const {
+  return m_map.size() == 0 ? 0 : m_map.size() * m_block_size - 1;
+}
+
+template <class T, class Alloc>
+typename deque<T, Alloc>::size_type deque<T, Alloc>::front_spare() const {
+  return m_start;
+}
+
+template <class T, class Alloc>
+typename deque<T, Alloc>::size_type deque<T, Alloc>::back_spare() const {
+  return this->capacity() - (m_start + m_size); 
+}
+
+template <class T, class Alloc>
+void deque<T, Alloc>::append(size_type n) {
+  size_type back_cap = this->back_spare();
+  if (n > back_cap) {
+    this->add_back_capacity(n - back_cap);
+  }
+}
+
+template <class T, class Alloc>
+void deque<T, Alloc>::append(size_type n, const value_type &val) {
+  size_type back_cap = this->back_spare();
+  if (n > back_cap) {
+    this->add_back_capacity(n - back_cap);
+  }
+}
 } // namespace tinystl
